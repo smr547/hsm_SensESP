@@ -42,6 +42,8 @@ NOTE: This example uses only the &quot;QEP&quot; component of the QP/C++ framewo
   </operation>
   <!--${Shared::BSP_deepSleep}-->
   <operation name="BSP_deepSleep" type="void" visibility="0x00" properties="0x00"/>
+  <!--${Shared::chainCount}-->
+  <attribute name="chainCount" type="std::uint32_t" visibility="0x00" properties="0x00"/>
  </package>
  <!--${SMs}-->
  <package name="SMs" stereotype="0x02" namespace="APP::">
@@ -132,7 +134,10 @@ BSP_display(&quot;s-I;&quot;);</action>
       <exit>BSP_display(&quot;s1-EXIT;&quot;);</exit>
       <!--${SMs::QHsmTst::SM::s::s1::initial}-->
       <initial target="../7">
-       <action>BSP_display(&quot;s1-INIT;&quot;);</action>
+       <action>BSP_display(&quot;s1-INIT;&quot;);
+if (APP::chainCount &gt; 0) {
+    APP::chainCount --;
+}</action>
        <initial_glyph conn="32,19,5,0,-8,6">
         <action box="-4,0,6,2"/>
        </initial_glyph>
@@ -276,7 +281,8 @@ BSP_display(&quot;s2-I;&quot;);</action>
        <exit>BSP_display(&quot;s21-EXIT;&quot;);</exit>
        <!--${SMs::QHsmTst::SM::s::s2::s21::initial}-->
        <initial target="../4">
-        <action>BSP_display(&quot;s21-INIT;&quot;);</action>
+        <action>BSP_display(&quot;s21-INIT;&quot;);
+APP:chainCount++;</action>
         <initial_glyph conn="64,23,5,0,-4,2">
          <action box="-2,0,5,2"/>
         </initial_glyph>
@@ -384,6 +390,9 @@ $define ${SMs::QHsmTst}</text>
 
 using namespace sensesp;
 
+std::uint32_t APP::chainCount;
+auto count_producer = std::make_shared&lt;ObservableValue&lt;int&gt;&gt;(0);
+
 // The setup function performs one-time application initialization.
 void setup() {
 
@@ -392,13 +401,13 @@ void setup() {
     Serial.print(&quot;Waiting for input &gt;&gt;&gt; &quot;);
 
 
-  SetupLogging(ESP_LOG_DEBUG);
+  SetupLogging(ESP_LOG_NONE);
 
   // Construct the global SensESPApp() object
   SensESPAppBuilder builder;
   sensesp_app = (&amp;builder)
                     // Set a custom hostname for the app.
-                    -&gt;set_hostname(&quot;my-sensesp-project&quot;)
+                    -&gt;set_hostname(&quot;SouthSky-Chain-Counter&quot;)
                     // Optionally, hard-code the WiFi and Signal K server
                     // settings. This is normally not needed.
                     //-&gt;set_wifi_client(&quot;My WiFi SSID&quot;, &quot;my_wifi_password&quot;)
@@ -490,6 +499,23 @@ void setup() {
 
   analog_input-&gt;connect_to(aiv_sk_output);
 
+  // chain counter to SignalK
+
+  auto cc_metadata = std::make_shared&lt;SKMetadata&gt;(&quot;&quot;, &quot;Chain counter&quot;);
+  auto cc_sk_output = std::make_shared&lt;SKOutput&lt;int&gt;&gt;(
+      &quot;sensors.chain.count&quot;,
+      &quot;/Sensors/chain/count&quot;,
+      cc_metadata
+  );
+
+  ConfigItem(cc_sk_output)
+      -&gt;set_title(&quot;Chain Counter SK Output Path&quot;)
+      -&gt;set_description(&quot;The SK path to publish the chain counter count&quot;)
+      -&gt;set_sort_order(101);
+   
+   count_producer-&gt;connect_to(cc_sk_output);
+  
+
   // Connect digital input 2 to Signal K output.
   auto di2_metadata = std::make_shared&lt;SKMetadata&gt;(&quot;&quot;, &quot;Digital input 2 value&quot;);
   auto di2_sk_output = std::make_shared&lt;SKOutput&lt;bool&gt;&gt;(
@@ -536,6 +562,15 @@ void loop() {
         APP::the_sm-&gt;dispatch(&amp;e, 0U);  // dispatch the event
     }
 
+// Serial.print(&quot;chain counter is: &quot;);
+// Serial.print(APP::chainCount);
+// Serial.print(&quot;\n&quot;);
+ if (count_producer-&gt;get() != APP::chainCount) {
+    count_producer-&gt;set(APP::chainCount);
+Serial.print(&quot;chain counter updated to: &quot;);
+Serial.print(APP::chainCount);
+Serial.print(&quot;\n&quot;);
+ }
 
  event_loop()-&gt;tick(); 
 

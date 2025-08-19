@@ -53,6 +53,9 @@
 
 using namespace sensesp;
 
+std::uint32_t APP::chainCount;
+auto count_producer = std::make_shared<ObservableValue<int>>(0);
+
 // The setup function performs one-time application initialization.
 void setup() {
 
@@ -61,13 +64,13 @@ void setup() {
     Serial.print("Waiting for input >>> ");
 
 
-  SetupLogging(ESP_LOG_DEBUG);
+  SetupLogging(ESP_LOG_NONE);
 
   // Construct the global SensESPApp() object
   SensESPAppBuilder builder;
   sensesp_app = (&builder)
                     // Set a custom hostname for the app.
-                    ->set_hostname("my-sensesp-project")
+                    ->set_hostname("SouthSky-Chain-Counter")
                     // Optionally, hard-code the WiFi and Signal K server
                     // settings. This is normally not needed.
                     //->set_wifi_client("My WiFi SSID", "my_wifi_password")
@@ -159,6 +162,23 @@ void setup() {
 
   analog_input->connect_to(aiv_sk_output);
 
+  // chain counter to SignalK
+
+  auto cc_metadata = std::make_shared<SKMetadata>("", "Chain counter");
+  auto cc_sk_output = std::make_shared<SKOutput<int>>(
+      "sensors.chain.count",
+      "/Sensors/chain/count",
+      cc_metadata
+  );
+
+  ConfigItem(cc_sk_output)
+      ->set_title("Chain Counter SK Output Path")
+      ->set_description("The SK path to publish the chain counter count")
+      ->set_sort_order(101);
+
+   count_producer->connect_to(cc_sk_output);
+
+
   // Connect digital input 2 to Signal K output.
   auto di2_metadata = std::make_shared<SKMetadata>("", "Digital input 2 value");
   auto di2_sk_output = std::make_shared<SKOutput<bool>>(
@@ -205,6 +225,15 @@ void loop() {
         APP::the_sm->dispatch(&e, 0U);  // dispatch the event
     }
 
+// Serial.print("chain counter is: ");
+// Serial.print(APP::chainCount);
+// Serial.print("\n");
+ if (count_producer->get() != APP::chainCount) {
+    count_producer->set(APP::chainCount);
+Serial.print("chain counter updated to: ");
+Serial.print(APP::chainCount);
+Serial.print("\n");
+ }
 
  event_loop()->tick();
 

@@ -70,6 +70,9 @@ void BSP_terminate(std::int16_t const result);
 //${Shared::BSP_deepSleep} ...................................................
 void BSP_deepSleep();
 
+//${Shared::chainCount} ......................................................
+extern std::uint32_t chainCount;
+
 } // namespace APP
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -195,6 +195,9 @@ Q_STATE_DEF(QHsmTst, s1) {
         //${SMs::QHsmTst::SM::s::s1::initial}
         case Q_INIT_SIG: {
             BSP_display("s1-INIT;");
+            if (APP::chainCount > 0) {
+                APP::chainCount --;
+            }
             status_ = tran(&s11);
             break;
         }
@@ -372,6 +375,7 @@ Q_STATE_DEF(QHsmTst, s21) {
         //${SMs::QHsmTst::SM::s::s2::s21::initial}
         case Q_INIT_SIG: {
             BSP_display("s21-INIT;");
+            APP:chainCount++;
             status_ = tran(&s211);
             break;
         }
